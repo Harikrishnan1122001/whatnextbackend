@@ -298,35 +298,73 @@ app.use(async (req, res, next) => {
 });
 
 // ── Routes (crash-proof loading) ─────────────────────────────
-// If ANY one route file throws while being required (bad import,
-// missing env var used at module scope, broken model reference,
-// etc.), it used to crash the entire serverless function for every
-// path, including "/". This loads each route independently: a
-// broken file only breaks its own path, and the real error message
-// shows up directly in the response + logs instead of a blank 500.
-function mountRoute(mountPath, routePath) {
-  try {
-    const router = require(routePath);
-    app.use(mountPath, router);
-    console.log(`✅ Mounted ${mountPath} -> ${routePath}`);
-  } catch (err) {
-    console.error(`❌ Failed to load ${routePath} for ${mountPath}:`, err.stack || err.message);
-    app.use(mountPath, (req, res) => {
-      res.status(500).json({
-        success: false,
-        message: `Route "${mountPath}" failed to load on the server.`,
-        error: err.message
-      });
-    });
-  }
+// IMPORTANT: each require() below uses a literal string path, not a
+// variable. Vercel's bundler statically scans for require() calls
+// to decide which files to include in the deployed function — a
+// dynamic require(variable) is invisible to that scan, which is why
+// "Cannot find module './routes/authRoutes'" happened even though
+// the file exists in the repo. Literal paths fix that. Each one is
+// still wrapped individually so a bug in one route file only takes
+// down that route, not the whole app.
+try {
+  app.use('/api/auth', require('./routes/authRoutes'));
+  console.log('✅ Mounted /api/auth');
+} catch (err) {
+  console.error('❌ Failed to load ./routes/authRoutes:', err.stack || err.message);
+  app.use('/api/auth', (req, res) => {
+    res.status(500).json({ success: false, message: 'Route "/api/auth" failed to load.', error: err.message });
+  });
 }
 
-app.use('/api/auth', require('./routes/authRoutes'));
-app.use('/api/courses', require('./routes/courseRoutes'));
-app.use('/api/live-classes', require('./routes/liveClassRoutes'));
-app.use('/api/notes', require('./routes/notesRoutes'));
-app.use('/api/payments', require('./routes/paymentRoutes'));
-app.use('/api/admin', require('./routes/adminRoutes'));
+try {
+  app.use('/api/courses', require('./routes/courseRoutes'));
+  console.log('✅ Mounted /api/courses');
+} catch (err) {
+  console.error('❌ Failed to load ./routes/courseRoutes:', err.stack || err.message);
+  app.use('/api/courses', (req, res) => {
+    res.status(500).json({ success: false, message: 'Route "/api/courses" failed to load.', error: err.message });
+  });
+}
+
+try {
+  app.use('/api/live-classes', require('./routes/liveClassRoutes'));
+  console.log('✅ Mounted /api/live-classes');
+} catch (err) {
+  console.error('❌ Failed to load ./routes/liveClassRoutes:', err.stack || err.message);
+  app.use('/api/live-classes', (req, res) => {
+    res.status(500).json({ success: false, message: 'Route "/api/live-classes" failed to load.', error: err.message });
+  });
+}
+
+try {
+  app.use('/api/notes', require('./routes/notesRoutes'));
+  console.log('✅ Mounted /api/notes');
+} catch (err) {
+  console.error('❌ Failed to load ./routes/notesRoutes:', err.stack || err.message);
+  app.use('/api/notes', (req, res) => {
+    res.status(500).json({ success: false, message: 'Route "/api/notes" failed to load.', error: err.message });
+  });
+}
+
+try {
+  app.use('/api/payments', require('./routes/paymentRoutes'));
+  console.log('✅ Mounted /api/payments');
+} catch (err) {
+  console.error('❌ Failed to load ./routes/paymentRoutes:', err.stack || err.message);
+  app.use('/api/payments', (req, res) => {
+    res.status(500).json({ success: false, message: 'Route "/api/payments" failed to load.', error: err.message });
+  });
+}
+
+try {
+  app.use('/api/admin', require('./routes/adminRoutes'));
+  console.log('✅ Mounted /api/admin');
+} catch (err) {
+  console.error('❌ Failed to load ./routes/adminRoutes:', err.stack || err.message);
+  app.use('/api/admin', (req, res) => {
+    res.status(500).json({ success: false, message: 'Route "/api/admin" failed to load.', error: err.message });
+  });
+}
 
 // ── Health Check ────────────────────────────────────────────
 app.get('/api/health', (req, res) => {
