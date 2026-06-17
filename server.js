@@ -297,13 +297,36 @@ app.use(async (req, res, next) => {
   next();
 });
 
-// ── Routes ──────────────────────────────────────────────────
-app.use('/api/auth', require('./routes/authRoutes'));
-app.use('/api/courses', require('./routes/courseRoutes'));
-app.use('/api/live-classes', require('./routes/liveClassRoutes'));
-app.use('/api/notes', require('./routes/notesRoutes'));
-app.use('/api/payments', require('./routes/paymentRoutes'));
-app.use('/api/admin', require('./routes/adminRoutes'));
+// ── Routes (crash-proof loading) ─────────────────────────────
+// If ANY one route file throws while being required (bad import,
+// missing env var used at module scope, broken model reference,
+// etc.), it used to crash the entire serverless function for every
+// path, including "/". This loads each route independently: a
+// broken file only breaks its own path, and the real error message
+// shows up directly in the response + logs instead of a blank 500.
+function mountRoute(mountPath, routePath) {
+  try {
+    const router = require(routePath);
+    app.use(mountPath, router);
+    console.log(`✅ Mounted ${mountPath} -> ${routePath}`);
+  } catch (err) {
+    console.error(`❌ Failed to load ${routePath} for ${mountPath}:`, err.stack || err.message);
+    app.use(mountPath, (req, res) => {
+      res.status(500).json({
+        success: false,
+        message: `Route "${mountPath}" failed to load on the server.`,
+        error: err.message
+      });
+    });
+  }
+}
+
+mountRoute('/api/auth', './routes/authRoutes');
+mountRoute('/api/courses', './routes/courseRoutes');
+mountRoute('/api/live-classes', './routes/liveClassRoutes');
+mountRoute('/api/notes', './routes/notesRoutes');
+mountRoute('/api/payments', './routes/paymentRoutes');
+mountRoute('/api/admin', './routes/adminRoutes');
 
 // ── Health Check ────────────────────────────────────────────
 app.get('/api/health', (req, res) => {
