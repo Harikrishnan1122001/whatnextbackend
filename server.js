@@ -321,12 +321,12 @@ function mountRoute(mountPath, routePath) {
   }
 }
 
-mountRoute('/api/auth', './routes/authRoutes');
-mountRoute('/api/courses', './routes/courseRoutes');
-mountRoute('/api/live-classes', './routes/liveClassRoutes');
-mountRoute('/api/notes', './routes/notesRoutes');
-mountRoute('/api/payments', './routes/paymentRoutes');
-mountRoute('/api/admin', './routes/adminRoutes');
+app.use('/api/auth', require('./routes/authRoutes'));
+app.use('/api/courses', require('./routes/courseRoutes'));
+app.use('/api/live-classes', require('./routes/liveClassRoutes'));
+app.use('/api/notes', require('./routes/notesRoutes'));
+app.use('/api/payments', require('./routes/paymentRoutes'));
+app.use('/api/admin', require('./routes/adminRoutes'));
 
 // ── Health Check ────────────────────────────────────────────
 app.get('/api/health', (req, res) => {
