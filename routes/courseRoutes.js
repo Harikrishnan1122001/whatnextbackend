@@ -38,7 +38,7 @@ router.put('/:id',
   handleMulterError,
   updateCourse
 );
-router.get('/:courseId/videos/:videoId/stream-token', protect, courseController.getVideoStreamToken);
+
 router.delete('/:id',       protect, adminOnly, deleteCourse);
 router.patch('/:id/publish', protect, adminOnly, togglePublish);
 
