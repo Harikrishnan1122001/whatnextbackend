@@ -481,7 +481,7 @@
 const Course = require('../models/Course');
 const User = require('../models/User');
 const { asyncHandler, AppError, sendSuccess } = require('../utils/errorHandler');
-
+const jwt = require('jsonwebtoken');
 // helper: accept both comma-string and array
 const toArray = (val) => {
   if (!val) return [];
@@ -746,4 +746,25 @@ exports.getAllCoursesAdmin = asyncHandler(async (req, res) => {
     courses,
     pagination: { total, page: Number(page), limit: Number(limit), pages: Math.ceil(total / limit) }
   });
+});
+exports.getVideoStreamToken = asyncHandler(async (req, res) => {
+  const course = await Course.findById(req.params.courseId);
+  if (!course) throw new AppError('Course not found', 404);
+
+  const video = course.videos.find(v => v._id.toString() === req.params.videoId);
+  if (!video) throw new AppError('Video not found', 404);
+
+  const user = await User.findById(req.user.id);
+  const purchased = user.hasPurchasedCourse(course._id);
+  if (!purchased && !video.isPreview && user.role !== 'admin') {
+    throw new AppError('Purchase this course to watch this video', 403);
+  }
+
+  const token = jwt.sign(
+    { userId: req.user.id, courseId: course._id.toString(), videoId: video._id.toString() },
+    process.env.JWT_SECRET,
+    { expiresIn: '5m' }
+  );
+
+  return sendSuccess(res, { videoUrl: video.videoUrl, token });
 });
